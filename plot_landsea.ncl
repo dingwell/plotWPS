@@ -2,7 +2,7 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_code.ncl"
 load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_csm.ncl"
 load "$NCARG_ROOT/lib/ncarg/nclscripts/wrf/WRFUserARW.ncl"
 
-fnames=systemfunc("/bin/ls test02/geo_em.d??.nc")
+fnames=systemfunc("/bin/ls $FILES")
 
 ; Goal:
 ; + show topography over land
@@ -76,7 +76,7 @@ begin
   ; Set topography to -1 over lakes/rivers/ocean
   data = where(landmask.eq.1,topo,-1)
   ; Set topography to -1001 over ocean
-  data = where(topo.le.0 .and. landmask.eq.-1,-1001,data)
+  data = where(topo.le.1 .and. landmask.eq.0,-1001,data)
   ; Set topography to lake depth over lakes
   data = where(depth.gt.10,-depth,data)
 
