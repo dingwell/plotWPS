@@ -15,6 +15,8 @@ PATH_TO_PLOT_LANDSEA=$HOME/programming/git/plotWPS/
 
 export FILES=$@
 
-ncl "$PATH_TO_PLOT_LANDSEA/plot_landsea.ncl"
+#ncl "$PATH_TO_PLOT_LANDSEA/plot_landsea.ncl" |tail -n +6
+echo " NCAR Command Language Version $(ncl -V)"
+ncl "$PATH_TO_PLOT_LANDSEA/plot_landsea.ncl"|sed -e '1,5d'
 
 

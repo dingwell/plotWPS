@@ -21,35 +21,16 @@ fnames=systemfunc("/bin/ls $FILES")
 ; Define our contour levels:
 ; DO NOT CHANGE THE NUMBER OF LEVELS
 ; THE 0 LEVEL SHOULD BE 11 LEVELS FROM TOP
-levels_land = fspan(0,4000,11)      ; positive values over land
-levels_water= fspan(-1000,-100,10)  ; negative values over lakes/ocean
+levels_land = fspan(400,4000,10)      ; positive values over land
+levels_water= fspan(-900,0,10)  ; negative values over lakes/ocean
 
 levels=array_append_record(levels_water,levels_land,0)
 ;levels=(/levels_water(:),levels_land(:)/)
 ; Define colormap (first 11=water last 10=land)
-cmap = (/ "White","Black", \
-          "(/0.071, 0.039, 0.227/)", \
-          "(/0.090, 0.192, 0.431/)", \
-          "(/0.075, 0.349, 0.549/)", \
-          "(/0.102, 0.404, 0.643/)", \
-          "(/0.118, 0.447, 0.698/)", \
-          "(/0.114, 0.545, 0.769/)", \
-          "(/0.102, 0.647, 0.824/)", \
-          "(/0.106, 0.722, 0.875/)", \
-          "(/0.102, 0.800, 0.922/)", \
-          "(/0.102, 0.847, 0.945/)", \
-          "(/0.149, 0.875, 0.945/)", \
-          "(/0.000, 0.788, 0.196/)", \
-          "(/0.118, 0.827, 0.408/)", \
-          "(/0.369, 0.878, 0.455/)", \
-          "(/0.635, 0.922, 0.510/)", \
-          "(/0.875, 0.973, 0.573/)", \
-          "(/0.965, 0.898, 0.584/)", \
-          "(/0.784, 0.698, 0.463/)", \
-          "(/0.635, 0.494, 0.369/)", \
-          "(/0.561, 0.380, 0.329/)", \
-          "(/0.635, 0.490, 0.455/)", \
-          "(/0.698, 0.588, 0.545/)" /)
+cmap = "viridis"  ; Expecting 255 colours
+colors = read_colormap_file(cmap)
+colors_indexes = (/8,15,22,29,36,43,50,57,64,71,\
+  140,152,164,176,188,200,212,224,236,248,253/)
 
 
 overlay_mask="LANDMASK" ; Sea/Lake/River = 0, Land = 1
@@ -96,6 +77,14 @@ begin
   data@xbox   = (/lon(0,0),lon(0,nx),lon(ny,nx),lon(ny,0),lon(0,0)/)
   data@ybox   = (/lat(0,0),lat(0,nx),lat(ny,nx),lat(ny,0),lat(0,0)/)
 
+  ; Get projection attributes:
+  data@proj = fin[0]@MAP_PROJ
+  if (data@proj .eq. 1) then
+    data@LAT1 = fin[0]@TRUELAT1
+    data@LAT2 = fin[0]@TRUELAT2
+    data@LON0 = fin[0]@STAND_LON
+  end if
+
   return data
 end 
 
@@ -104,7 +93,10 @@ nfiles=dimsizes(fnames)
 
 ; Set up the plot resources:
 res                               = True
+print(levels)
 res@cnLevels                      = levels
+;res@cnFillPalette                 = colors(colors_indexes,:)
+res@cnFillColors                  = colors(colors_indexes,:)
 res@lbOrientation                 = "Vertical"
 res@cnFillOn                      = True
 res@cnLinesOn                     = False
@@ -124,7 +116,8 @@ res@gsnFrame                      = False
 
 ; set up line resources:
 lres                              = True
-lres@gsLineThicknessF             = 0.5
+lres@gsLineThicknessF             = 1.0
+lres@gsLineColor                  = "grey40"
 
 ; set up map resources based on first file
 data=readwrf(fnames(0),0)
@@ -132,8 +125,6 @@ data=readwrf(fnames(0),0)
 ;mres = set_mp_wrf_map_mresources(fin,res)
 mres=res
 mres@mpDataBaseVersion            = "MediumRes"
-mres@mpOutlineDrawOrder           = "PostDraw"
-mres@mpGridAndLimbOn              = False
 mres@mpLimitMode                  = "Corners"
 mres@mpLeftCornerLatF             = data@lly
 mres@mpLeftCornerLonF             = data@llx
@@ -141,17 +132,32 @@ mres@mpRightCornerLatF            = data@ury
 mres@mpRightCornerLonF            = data@urx
 
 mres@pmTickMarkDisplayMode        = "Always"
-mres@tmXMajorGrid                 = True
-mres@tmYMajorGrid                 = True
+
+mres@mpOutlineDrawOrder           = "PostDraw"
+mres@mpGridAndLimbOn              = True
+mres@mpGridLatSpacingF            = 10
+mres@mpGridLonSpacingF            = 10
+mres@mpGridLineThicknessF         = 0.5
+mres@mpGridLineColor              = "grey20"
+
+mres@tmXMajorGrid                 = False
+mres@tmYMajorGrid                 = False
 mres@tmXMajorGridLineColor        = "white"
 mres@tmYMajorGridLineColor        = "white"
 mres@tmXMajorGridThicknessF       = 0.5
 mres@tmYMajorGridThicknessF       = 0.5
 
+if ( data@proj .eq. 1 ) then
+  mres@mpProjection           = "LambertConformal"
+  mres@mpLambertParallel1F    = data@LAT1
+  mres@mpLambertParallel2F    = data@LAT2
+  mres@mpLambertMeridianF     = data@LON0
+end if
 ; Create the map:
 wks = gsn_open_wks(type,"elevation_and_depth")
-gsn_define_colormap(wks,cmap)
+;gsn_define_colormap(wks,cmap)
 map = gsn_csm_contour_map(wks,data,mres)
+;map = gsn_contour_map(wks,data,mres)
 ;draw(map)
 
 ; Create overlay plots for all other files:
